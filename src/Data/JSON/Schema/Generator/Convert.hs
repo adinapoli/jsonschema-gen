@@ -12,12 +12,22 @@ import Control.Applicative ((<*>))
 import Data.Monoid (mappend)
 #endif
 
+#if MIN_VERSION_aeson(2,0,0)
+import Data.String (fromString)
+#else
+#endif
+
 import Data.JSON.Schema.Generator.Types (Schema(..), SchemaChoice(..))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as A
+#if MIN_VERSION_aeson(2,0,0)
+import qualified Data.Aeson.KeyMap as KeyMap
+import Data.Bifunctor (first)
+#else
 import qualified Data.HashMap.Strict as HashMap
+#endif
 import qualified Data.Vector as Vector
 
 --------------------------------------------------------------------------------
@@ -25,8 +35,13 @@ import qualified Data.Vector as Vector
 convert :: A.Options -> Schema -> A.Value
 convert = convert' False
 
+#if MIN_VERSION_aeson(2,0,0)
+convert' :: Bool -> A.Options -> Schema -> A.Value
+convert' inArray opts = A.Object . KeyMap.fromList . map (first toAesonKey) . convertToList inArray opts
+#else
 convert' :: Bool -> A.Options -> Schema -> A.Value
 convert' = (((A.Object . HashMap.fromList) .) .) . convertToList
+#endif
 
 convertToList :: Bool -> A.Options -> Schema -> [(Text,A.Value)]
 convertToList inArray opts s = foldr1 (++) $
@@ -225,9 +240,9 @@ conAsObject' opts@(A.sumEncoding -> A.ObjectWithSingleField ) sc = conAsMap   op
 conAsObject' _opts {- @(A.sumEncoding -> A.UntaggedValue) -} _sc = error "Unsupported option"
 
 conAsTag :: A.Options -> Text -> Text ->  SchemaChoice -> A.Value
-conAsTag opts tFld cFld (SCChoiceEnum  tag _)      = object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts [])]
-conAsTag opts tFld cFld (SCChoiceArray tag _ ar)   = object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts ar)]
-conAsTag opts tFld _    (SCChoiceMap   tag _ mp _) = object ((tFld, object [("enum", array [tag])]) : toMap opts mp)
+conAsTag opts tFld cFld (SCChoiceEnum  tag _)      = object [(toAesonKey tFld, object [("enum", array [tag])]), (toAesonKey cFld, conToArray opts [])]
+conAsTag opts tFld cFld (SCChoiceArray tag _ ar)   = object [(toAesonKey tFld, object [("enum", array [tag])]), (toAesonKey cFld, conToArray opts ar)]
+conAsTag opts tFld _    (SCChoiceMap   tag _ mp _) = object ((toAesonKey tFld, object [("enum", array [tag])]) : toMap opts mp)
 
 conAsArray :: A.Options -> SchemaChoice -> A.Value
 conAsArray opts (SCChoiceEnum  tag _)       = array [object [("enum", array [tag])], conToArray  opts []]
@@ -235,9 +250,17 @@ conAsArray opts (SCChoiceArray tag _ ar)    = array [object [("enum", array [tag
 conAsArray opts (SCChoiceMap   tag _ mp rq) = array [object [("enum", array [tag])], conToObject opts mp rq]
 
 conAsMap :: A.Options -> SchemaChoice -> A.Value
-conAsMap opts (SCChoiceEnum  tag _)       = object [(tag, conToArray  opts [])]
-conAsMap opts (SCChoiceArray tag _ ar)    = object [(tag, conToArray  opts ar)]
-conAsMap opts (SCChoiceMap   tag _ mp rq) = object [(tag, conToObject opts mp rq)]
+conAsMap opts (SCChoiceEnum  tag _)       = object [(toAesonKey tag, conToArray  opts [])]
+conAsMap opts (SCChoiceArray tag _ ar)    = object [(toAesonKey tag, conToArray  opts ar)]
+conAsMap opts (SCChoiceMap   tag _ mp rq) = object [(toAesonKey tag, conToObject opts mp rq)]
+
+#if MIN_VERSION_aeson(2,0,0)
+toAesonKey :: Text -> A.Key
+toAesonKey = fromString . unpack
+#else
+toAesonKey :: Text -> Text
+toAesonKey = id
+#endif
 
 conToArray :: A.Options -> [Schema] -> A.Value
 conToArray opts ar = object
@@ -259,6 +282,11 @@ conToObject opts mp rq = object
     required (A.omitNothingFields -> True) = array rq
     required (A.omitNothingFields -> _   ) = array . map fst $ toMap opts mp
 
+#if MIN_VERSION_aeson(2,0,0)
+toMap :: A.Options -> [(Text,Schema)] -> [(A.Key,A.Value)]
+toMap opts mp = map (\(n,v) -> (toAesonKey n,convert' False opts v)) mp
+#else
 toMap :: A.Options -> [(Text,Schema)] -> [(Text,A.Value)]
 toMap opts mp = map (\(n,v) -> (n,convert' False opts v)) mp
+#endif
 
