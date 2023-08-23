@@ -196,8 +196,21 @@ instance RecordToPairs U1 where
 instance (Selector s, IsNullable a, ToJSONSchemaDef a) => RecordToPairs (S1 s a) where
     recordToPairs opts env notMaybe _ 
         | isEmpty   = mempty
-        | otherwise = pure ( Text.pack selname
-                           , (toJSONSchemaDef opts env' field) { scNullable = isNullable field })
+        | otherwise =
+            let wrapped  = toJSONSchemaDef opts env' field
+                wrapped' = case wrapped of
+                  SCSchema{}  -> wrapped
+                  SCString{}  -> wrapped { scNullable = isNullable field }
+                  SCInteger{} -> wrapped { scNullable = isNullable field }
+                  SCNumber{}  -> wrapped { scNullable = isNullable field }
+                  SCBoolean{} -> wrapped { scNullable = isNullable field }
+                  SCConst{}   -> wrapped
+                  SCObject{}  -> wrapped { scNullable = isNullable field }
+                  SCArray{}   -> wrapped { scNullable = isNullable field }
+                  SCOneOf{}   -> wrapped { scNullable = isNullable field }
+                  SCRef{}     -> wrapped { scNullable = isNullable field }
+                  SCNull -> wrapped
+            in pure ( Text.pack selname, wrapped' )
       where
         isEmpty = notMaybe && isNullable field
         field = Proxy :: Proxy (a p)
@@ -311,12 +324,6 @@ instance {-# OVERLAPPABLE #-} (Typeable a, JSONSchemaGen a) => JSONSchemaPrim a 
                          , scNullable  = False
                          }
         Nothing
-         | SCSchema{} <- unwrapped_schema
-         -> SCRef
-            { scReference = scId unwrapped_schema
-            , scNullable  = False
-            }
-         | otherwise
          -> unwrapped_schema
 
 --------------------------------------------------------------------------------

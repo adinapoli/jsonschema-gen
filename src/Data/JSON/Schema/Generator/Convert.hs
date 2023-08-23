@@ -21,6 +21,7 @@ import qualified Data.Aeson.Key as K
 import qualified Data.Aeson.KeyMap as KM
 import qualified Data.Vector as Vector
 import Data.Aeson.Key (fromString)
+import qualified Data.Text as T
 
 --------------------------------------------------------------------------------
 
@@ -148,8 +149,10 @@ jsOneOf opts SCOneOf {scChoices = cs, scNullable = nullable} = choices opts null
 jsOneOf _ _ = []
 
 jsRequired :: A.Options -> Schema -> [(A.Key,A.Value)]
-jsRequired      (A.omitNothingFields -> True) SCObject {scRequired = r  } = [("required", array r)]
-jsRequired opts@(A.omitNothingFields -> _   ) SCObject {scProperties = p} = [("required", array . map fst $ toMap opts p)]
+jsRequired      (A.omitNothingFields -> True) SCObject {scRequired = r  } =
+  [("required", array r)]
+jsRequired opts@(A.omitNothingFields -> _   ) SCObject {scProperties = p} =
+  [("required", array . map fst $ toMap opts p)]
 jsRequired _ _ = []
 
 jsDefinitions :: A.Options -> Schema -> [(A.Key,A.Value)]
@@ -221,15 +224,24 @@ conAsObject opts sc =
         ]
 
 conAsObject' :: A.Options -> SchemaChoice -> A.Value
-conAsObject' opts@(A.sumEncoding -> A.TaggedObject tFld cFld) sc = conAsTag   opts (fromString tFld) (fromString cFld) sc
-conAsObject' opts@(A.sumEncoding -> A.TwoElemArray          ) sc = conAsArray opts sc
-conAsObject' opts@(A.sumEncoding -> A.ObjectWithSingleField ) sc = conAsMap   opts sc
+conAsObject' opts@(A.sumEncoding -> A.TaggedObject tFld cFld) sc =
+  conAsTag   opts (fromString $ A.constructorTagModifier opts tFld) (fromString cFld) sc
+conAsObject' opts@(A.sumEncoding -> A.TwoElemArray          ) sc =
+  conAsArray opts sc
+conAsObject' opts@(A.sumEncoding -> A.ObjectWithSingleField ) sc =
+  conAsMap   opts sc
 conAsObject' _opts {- @(A.sumEncoding -> A.UntaggedValue) -} _sc = error "Unsupported option"
 
 conAsTag :: A.Options -> A.Key -> A.Key ->  SchemaChoice -> A.Value
-conAsTag opts tFld cFld (SCChoiceEnum  tag _)      = object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts [])]
-conAsTag opts tFld cFld (SCChoiceArray tag _ ar)   = object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts ar)]
-conAsTag opts tFld _    (SCChoiceMap   tag _ mp _) = object ((tFld, object [("enum", array [tag])]) : toMap opts mp)
+conAsTag opts tFld cFld (SCChoiceEnum  tag _)      =
+  object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts [])]
+conAsTag opts tFld cFld (SCChoiceArray tag _ ar)   =
+  object [(tFld, object [("enum", array [tag])]), (cFld, conToArray opts ar)]
+conAsTag opts tFld _    (SCChoiceMap   tag _ mp _) =
+  object ((tFld, object [("enum", array [tag])]) : toMap opts mp)
+
+keyFieldModifier :: A.Options -> A.Key -> A.Key
+keyFieldModifier opts = fromString . A.fieldLabelModifier opts . T.unpack . K.toText
 
 conAsArray :: A.Options -> SchemaChoice -> A.Value
 conAsArray opts (SCChoiceEnum  tag _)       = array [object [("enum", array [tag])], conToArray  opts []]
@@ -262,5 +274,5 @@ conToObject opts mp rq = object
     required (A.omitNothingFields -> _   ) = array . map fst $ toMap opts mp
 
 toMap :: A.Options -> [(Text,Schema)] -> [(A.Key,A.Value)]
-toMap opts mp = map (\(n,v) -> (K.fromText n,convert' False opts v)) mp
+toMap opts mp = map (\(n,v) -> (keyFieldModifier opts $ K.fromText n,convert' False opts v)) mp
 
