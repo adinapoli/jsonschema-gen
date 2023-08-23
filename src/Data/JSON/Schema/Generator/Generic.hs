@@ -1,34 +1,17 @@
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 800
-{-# LANGUAGE DataKinds #-}
-#endif
-{-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
-
-#if __GLASGOW_HASKELL__ < 710
-{-# LANGUAGE OverlappingInstances #-}
-#endif
-
-#if __GLASGOW_HASKELL__ >= 800
+{-# LANGUAGE DataKinds                     #-}
+{-# LANGUAGE EmptyDataDecls                #-}
+{-# LANGUAGE FlexibleInstances             #-}
+{-# LANGUAGE FunctionalDependencies        #-}
+{-# LANGUAGE KindSignatures                #-}
+{-# LANGUAGE MultiParamTypeClasses         #-}
+{-# LANGUAGE OverloadedStrings             #-}
+{-# LANGUAGE ScopedTypeVariables           #-}
+{-# LANGUAGE TypeOperators                 #-}
+{-# LANGUAGE UndecidableInstances          #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
-#endif
-
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans          #-}
 
 module Data.JSON.Schema.Generator.Generic () where
-
-#if MIN_VERSION_base(4,8,0)
-#else
-import Control.Applicative (pure)
-import Data.Monoid (mappend, mempty)
-#endif
 
 import Data.JSON.Schema.Generator.Class (JSONSchemaGen(..), JSONSchemaPrim(..)
     , GJSONSchemaGen(..), Options(..), FieldType(..))
@@ -45,13 +28,12 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import GHC.Generics (
       Datatype(datatypeName, moduleName), Constructor(conName), Selector(selName)
-#if MIN_VERSION_base(4,9,0)
     , Meta(MetaSel)
-#else
-    , NoSelector
-#endif
     , C1, D1, K1, M1(unM1), S1, U1, (:+:), (:*:)
     , S)
+import Data.Kind
+
+import Debug.Trace
 
 --------------------------------------------------------------------------------
 
@@ -102,13 +84,8 @@ instance (IsRecord f isRecord, SchemaTypeS f isRecord, Constructor c) => SchemaT
         env' = env { envConName = conName (undefined :: C1 c f p) }
 
 -- there are multiple constructors
-#if __GLASGOW_HASKELL__ >= 710
 instance {-# OVERLAPPABLE #-} (AllNullary f allNullary, SchemaTypeM f allNullary) => SchemaType f where
     simpleType opts env _ = (unTagged :: Tagged allNullary Schema -> Schema) . simpleTypeM opts env $ (Proxy :: Proxy (f p))
-#else
-instance (AllNullary f allNullary, SchemaTypeM f allNullary) => SchemaType f where
-    simpleType opts env _ = (unTagged :: Tagged allNullary Schema -> Schema) . simpleTypeM opts env $ (Proxy :: Proxy (f p))
-#endif
 
 class SchemaTypeS f isRecord where
     simpleTypeS :: Options -> Env -> Proxy (f a) -> Tagged isRecord Schema
@@ -254,7 +231,6 @@ instance (ProductToList a, ProductToList b) => ProductToList (a :*: b) where
 class ToJSONSchemaDef f where
     toJSONSchemaDef :: Options -> Env -> Proxy (f a) -> Schema
 
-#if __GLASGOW_HASKELL__ >= 710
 instance {-# OVERLAPPING #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i (Maybe a)) where
     toJSONSchemaDef opts env _  = case fieldType opts env of
         Just (FieldType p) -> toSchemaPrim opts p
@@ -264,17 +240,6 @@ instance {-# OVERLAPPABLE #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i a) whe
     toJSONSchemaDef opts env _ = case fieldType opts env of
         Just (FieldType p) -> toSchemaPrim opts p
         Nothing -> toSchemaPrim opts (Proxy :: Proxy a)
-#else
-instance (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i (Maybe a)) where
-    toJSONSchemaDef opts env _  = case fieldType opts env of
-        Just (FieldType p) -> toSchemaPrim opts p
-        Nothing -> toSchemaPrim opts (Proxy :: Proxy a)
-
-instance (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i a) where
-    toJSONSchemaDef opts env _ = case fieldType opts env of
-        Just (FieldType p) -> toSchemaPrim opts p
-        Nothing -> toSchemaPrim opts (Proxy :: Proxy a)
-#endif
 
 fieldType :: Options -> Env -> Maybe FieldType
 fieldType opts env = do
@@ -283,7 +248,6 @@ fieldType opts env = do
 
 --------------------------------------------------------------------------------
 
-#if __GLASGOW_HASKELL__ >= 710
 instance {-# OVERLAPPING #-} JSONSchemaPrim String where
     toSchemaPrim _ _ = scString
 
@@ -339,116 +303,46 @@ instance {-# OVERLAPS #-} (JSONSchemaPrim a) => JSONSchemaPrim (HashMap String a
         }
 
 instance {-# OVERLAPPABLE #-} (Typeable a, JSONSchemaGen a) => JSONSchemaPrim a where
-    toSchemaPrim opts a = SCRef
-        { scReference = maybe (scId $ toSchema opts a) Text.pack $ Map.lookup (typeOf (undefined :: a)) (typeRefMap opts)
-        , scNullable = False
-        }
-#else
-instance JSONSchemaPrim String where
-    toSchemaPrim _ _ = scString
-
-instance JSONSchemaPrim Text where
-    toSchemaPrim _ _ = scString
-
-instance JSONSchemaPrim UTCTime where
-    toSchemaPrim _ _ = scString { scFormat = Just "date-time" }
-
-instance JSONSchemaPrim Int where
-    toSchemaPrim _ _ = scInteger
-
-instance JSONSchemaPrim Integer where
-    toSchemaPrim _ _ = scInteger
-
-instance JSONSchemaPrim Float where
-    toSchemaPrim _ _ = scNumber
-
-instance JSONSchemaPrim Double where
-    toSchemaPrim _ _ = scNumber
-
-instance JSONSchemaPrim Bool where
-    toSchemaPrim _ _ = scBoolean
-
-instance (JSONSchemaPrim a) => JSONSchemaPrim [a] where
-    toSchemaPrim opts _ = SCArray
-        { scTitle = ""
-        , scDescription = Nothing
-        , scNullable = False
-        , scItems = [toSchemaPrim opts (Proxy :: Proxy a)]
-        , scLowerBound = Nothing
-        , scUpperBound = Nothing
-        }
-
-instance (JSONSchemaPrim a) => JSONSchemaPrim (Map String a) where
-    toSchemaPrim opts _ = SCObject
-        { scTitle = ""
-        , scDescription = Nothing
-        , scNullable = False
-        , scProperties = []
-        , scPatternProps = [(".*", toSchemaPrim opts (Proxy :: Proxy a))]
-        , scRequired = []
-        }
-
-instance (JSONSchemaPrim a) => JSONSchemaPrim (HashMap String a) where
-    toSchemaPrim opts _ = SCObject
-        { scTitle = ""
-        , scDescription = Nothing
-        , scNullable = False
-        , scProperties = []
-        , scPatternProps = [(".*", toSchemaPrim opts (Proxy :: Proxy a))]
-        , scRequired = []
-        }
-
-instance (Typeable a, JSONSchemaGen a) => JSONSchemaPrim a where
-    toSchemaPrim opts a = SCRef
-        { scReference = maybe (scId $ toSchema opts a) Text.pack $ Map.lookup (typeOf (undefined :: a)) (typeRefMap opts)
-        , scNullable = False
-        }
-#endif
+    toSchemaPrim opts a =
+      let mb_ty            = Text.pack <$> Map.lookup (typeOf (undefined :: a)) (typeRefMap opts)
+          unwrapped_schema = toSchema opts a
+      in case mb_ty of
+        Just ty -> SCRef { scReference = ty
+                         , scNullable  = False
+                         }
+        Nothing
+         | SCSchema{} <- unwrapped_schema
+         -> SCRef
+            { scReference = scId unwrapped_schema
+            , scNullable  = False
+            }
+         | otherwise
+         -> unwrapped_schema
 
 --------------------------------------------------------------------------------
 
 class IsNullable f where
     isNullable :: Proxy (f a) -> Bool
 
-#if __GLASGOW_HASKELL__ >= 710
 instance {-# OVERLAPPING #-} IsNullable (K1 i (Maybe a)) where
     isNullable _ = True
 
 instance {-# OVERLAPPABLE #-} IsNullable (K1 i a) where
     isNullable _ = False
-#else
-instance IsNullable (K1 i (Maybe a)) where
-    isNullable _ = True
-
-instance IsNullable (K1 i a) where
-    isNullable _ = False
-#endif
 
 --------------------------------------------------------------------------------
 
-class IsRecord (f :: * -> *) isRecord | f -> isRecord
+class IsRecord (f :: Type -> Type) isRecord | f -> isRecord
 
-#if __GLASGOW_HASKELL__ >= 710
 instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
-#if MIN_VERSION_base(4,9,0)
-instance {-# OVERLAPPING #-} IsRecord (M1 S ('MetaSel 'Nothing u ss ds) f) False
-#else
-instance {-# OVERLAPPING #-} IsRecord (M1 S NoSelector f) False
-#endif
-instance {-# OVERLAPPABLE #-} (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
-instance IsRecord (K1 i c) True
-instance IsRecord U1 False
-#else
-instance (IsRecord f isRecord) => IsRecord (f :*: g) isRecord
-instance IsRecord (M1 S NoSelector f) False
+instance IsRecord (M1 S ('MetaSel 'Nothing u ss ds) f) False
 instance (IsRecord f isRecord) => IsRecord (M1 S c f) isRecord
 instance IsRecord (K1 i c) True
 instance IsRecord U1 False
-#endif
 
 --------------------------------------------------------------------------------
 
-class AllNullary (f :: * -> *) allNullary | f -> allNullary
+class AllNullary (f :: Type -> Type) allNullary | f -> allNullary
 
 instance ( AllNullary a allNullaryL
          , AllNullary b allNullaryR
