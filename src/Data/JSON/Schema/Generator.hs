@@ -36,7 +36,6 @@ import Data.JSON.Schema.Generator.Generic ()
 import Data.Proxy (Proxy)
 
 import qualified Data.Aeson as A
-import qualified Data.Aeson.Types as A
 
 -- | Generate a JSON Schema from a proxy value of a type.
 -- This uses the default options to generate schema in json format.
