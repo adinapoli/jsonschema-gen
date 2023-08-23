@@ -16,7 +16,7 @@ module Data.JSON.Schema.Generator
 
     -- * Genenerating JSON Schema
       Options(..), FieldType(..), defaultOptions
-    , generate, generate'
+    , generate, generateWithOptions, generateJSON, generateJSONWithOptions
 
     -- * Type conversion
     , JSONSchemaGen(toSchema)
@@ -45,15 +45,27 @@ generate :: JSONSchemaGen a
          -> ByteString
 generate = A.encode . convert A.defaultOptions . toSchema defaultOptions
 
+generateJSON :: JSONSchemaGen a
+             => Proxy a -- ^ A proxy value of the type from which a schema will be generated.
+             -> A.Value
+generateJSON = convert A.defaultOptions . toSchema defaultOptions
+
 -- | Generate a JSON Schema from a proxy vaulue of a type.
 -- This uses the specified options to generate schema in json format.
 --
-generate' :: JSONSchemaGen a
-          => Options     -- ^ Schema generation 'Options'.
-          -> A.Options   -- ^ Encoding 'A.Options' of aeson.
-          -> Proxy a     -- ^ A proxy value of the type from which a schema will be generated.
-          -> ByteString
-generate' opts aopts = A.encode . convert aopts . toSchema opts
+generateWithOptions :: JSONSchemaGen a
+                    => Options     -- ^ Schema generation 'Options'.
+                    -> A.Options   -- ^ Encoding 'A.Options' of aeson.
+                    -> Proxy a     -- ^ A proxy value of the type from which a schema will be generated.
+                    -> ByteString
+generateWithOptions opts aopts = A.encode . convert aopts . toSchema opts
+
+generateJSONWithOptions :: JSONSchemaGen a
+                        => Options     -- ^ Schema generation 'Options'.
+                        -> A.Options   -- ^ Encoding 'A.Options' of aeson.
+                        -> Proxy a     -- ^ A proxy value of the type from which a schema will be generated.
+                        -> A.Value
+generateJSONWithOptions opts aopts = convert aopts . toSchema opts
 
 -- $use
 -- Example:
