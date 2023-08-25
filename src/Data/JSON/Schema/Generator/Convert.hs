@@ -149,8 +149,8 @@ jsOneOf opts SCOneOf {scChoices = cs, scNullable = nullable} = choices opts null
 jsOneOf _ _ = []
 
 jsRequired :: A.Options -> Schema -> [(A.Key,A.Value)]
-jsRequired      (A.omitNothingFields -> True) SCObject {scRequired = r  } =
-  [("required", array r)]
+jsRequired      opts@(A.omitNothingFields -> True) SCObject {scRequired = r  } =
+  [("required", array $ map (fromString . A.fieldLabelModifier opts . T.unpack) r)]
 jsRequired opts@(A.omitNothingFields -> _   ) SCObject {scProperties = p} =
   [("required", array . map fst $ toMap opts p)]
 jsRequired _ _ = []
