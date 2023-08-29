@@ -132,7 +132,7 @@ jsValue SCConst {scValue = v} = [("enum", array [v])]
 jsValue _ = []
 
 jsItems :: A.Options -> Schema -> [(A.Key,A.Value)]
-jsItems opts SCArray {scItems = items} = [("items", array . map (convert' True opts) $ items)]
+jsItems opts SCArray {scItems = itemsSchema} = [("items", convert' True opts $ itemsSchema)]
 jsItems _ _ = []
 
 jsProperties :: A.Options -> Schema -> [(A.Key,A.Value)]

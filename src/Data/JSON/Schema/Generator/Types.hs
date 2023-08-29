@@ -60,7 +60,7 @@ data Schema =
         { scTitle        :: !Text
         , scDescription  :: !(Maybe Text)
         , scNullable     :: !Bool
-        , scItems        :: ![Schema]
+        , scItems        :: !Schema
         , scLowerBound   :: !(Maybe Integer)
         , scUpperBound   :: !(Maybe Integer)
         }

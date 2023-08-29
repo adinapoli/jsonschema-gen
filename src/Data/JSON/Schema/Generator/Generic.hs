@@ -33,7 +33,6 @@ import GHC.Generics (
     , S)
 import Data.Kind
 
-import Debug.Trace
 
 --------------------------------------------------------------------------------
 
@@ -107,7 +106,7 @@ instance (ProductToList f) => SchemaTypeS f False where
         { scTitle = Text.pack $ envModuleName env ++ "." ++ envDatatypeName env ++ "." ++ envConName env
         , scDescription = Nothing
         , scNullable = False
-        , scItems = productToList opts env (Proxy :: Proxy (f p))
+        , scItems = head $ productToList opts env (Proxy :: Proxy (f p))
         , scLowerBound = Nothing
         , scUpperBound = Nothing
         }
@@ -290,7 +289,7 @@ instance {-# OVERLAPS #-} (JSONSchemaPrim a) => JSONSchemaPrim [a] where
         { scTitle = ""
         , scDescription = Nothing
         , scNullable = False
-        , scItems = [toSchemaPrim opts (Proxy :: Proxy a)]
+        , scItems = toSchemaPrim opts (Proxy :: Proxy a)
         , scLowerBound = Nothing
         , scUpperBound = Nothing
         }
