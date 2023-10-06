@@ -97,7 +97,7 @@ instance (RecordToPairs f) => SchemaTypeS f True where
         , scNullable = False
         , scProperties = recordToPairs opts env False (Proxy :: Proxy (f p))
         , scPatternProps = []
-        , scRequired = map fst $ recordToPairs opts env True (Proxy :: Proxy (f p))
+        , scRequired = map fst . filter ((/=) SCNull . snd) $ recordToPairs opts env True (Proxy :: Proxy (f p))
         }
 
 -- Product

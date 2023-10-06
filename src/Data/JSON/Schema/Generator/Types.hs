@@ -75,7 +75,7 @@ data Schema =
         , scNullable     :: !Bool
         }
     | SCNull
-    deriving (Show)
+    deriving (Show, Eq)
 
 -- | A sum encoding for ADT.
 --
@@ -101,7 +101,7 @@ data SchemaChoice =
         }
       -- ^ Encoding for constructos that are record type.
       -- e.g. "test": [{"tag": "xxx", "contents": {"aaa": "yyy",...}},...] or "test": [{"xxx": []},...]
-    deriving (Show)
+    deriving (Show, Eq)
 
 -- ^ A smart consturctor for String.
 --

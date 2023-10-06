@@ -105,6 +105,7 @@ jsType (needsNull -> f) (f -> True) SCObject  {scNullable = True } = [("type", a
 jsType (needsNull -> f) (f -> _   ) SCObject  {scNullable = _    } = [("type", string "object")]
 jsType (needsNull -> f) (f -> True) SCArray   {scNullable = True } = [("type", array ["array",  "null" :: Text])]
 jsType (needsNull -> f) (f -> _   ) SCArray   {scNullable = _    } = [("type", string "array")]
+jsType (needsNull -> f) (f -> _   ) SCNull                         = [("type", string "null")]
 jsType _ _ _ = []
 
 needsNull :: Bool -> A.Options -> Bool
