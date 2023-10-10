@@ -244,19 +244,32 @@ class ToJSONSchemaDef f where
     toJSONSchemaDef :: Options -> Env -> Proxy (f a) -> Schema
 
 instance {-# OVERLAPPING #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i (Maybe a)) where
-    toJSONSchemaDef opts env _  = case fieldType opts env of
-        Just (FieldType p) -> toSchemaPrim opts p
-        Nothing -> toSchemaPrim opts (Proxy :: Proxy a)
+    toJSONSchemaDef opts env _
+      | Just s <- schemaType opts env
+      = s
+      | Just (FieldType p) <- fieldType opts env
+      = toSchemaPrim opts p
+      | otherwise
+      = toSchemaPrim opts (Proxy :: Proxy a)
 
 instance {-# OVERLAPPABLE #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i a) where
-    toJSONSchemaDef opts env _ = case fieldType opts env of
-        Just (FieldType p) -> toSchemaPrim opts p
-        Nothing -> toSchemaPrim opts (Proxy :: Proxy a)
+    toJSONSchemaDef opts env _
+      | Just s <- schemaType opts env
+      = s
+      | Just (FieldType p) <- fieldType opts env
+      = toSchemaPrim opts p
+      | otherwise
+      = toSchemaPrim opts (Proxy :: Proxy a)
 
 fieldType :: Options -> Env -> Maybe FieldType
 fieldType opts env = do
     selname <- envSelname env
     Map.lookup selname $ fieldTypeMap opts
+
+schemaType :: Options -> Env -> Maybe Schema
+schemaType opts env = do
+    selname <- envSelname env
+    Map.lookup selname $ fieldSchemaMap opts
 
 --------------------------------------------------------------------------------
 
