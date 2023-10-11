@@ -5,6 +5,8 @@ module Data.JSON.Schema.Generator.Types
     , scInteger
     , scNumber
     , scBoolean
+    , setNullable
+    , getNullable
     ) where
 
 import Data.Text (Text)
@@ -142,3 +144,30 @@ scBoolean = SCBoolean
     , scNullable = False
     }
 
+setNullable :: Bool -> Schema -> Schema
+setNullable notRequired wrapped = case wrapped of
+  SCSchema{}  -> wrapped
+  SCString{}  -> wrapped { scNullable = notRequired }
+  SCInteger{} -> wrapped { scNullable = notRequired }
+  SCNumber{}  -> wrapped { scNullable = notRequired }
+  SCBoolean{} -> wrapped { scNullable = notRequired }
+  SCConst{}   -> wrapped
+  SCObject{}  -> wrapped { scNullable = notRequired }
+  SCArray{}   -> wrapped { scNullable = notRequired }
+  SCOneOf{}   -> wrapped { scNullable = notRequired }
+  SCRef{}     -> wrapped { scNullable = notRequired }
+  SCNull      -> wrapped
+
+getNullable :: Schema -> Bool
+getNullable wrapped = case wrapped of
+  SCSchema{}  -> False
+  SCString{}  -> scNullable wrapped
+  SCInteger{} -> scNullable wrapped
+  SCNumber{}  -> scNullable wrapped
+  SCBoolean{} -> scNullable wrapped
+  SCConst{}   -> False
+  SCObject{}  -> scNullable wrapped
+  SCArray{}   -> scNullable wrapped
+  SCOneOf{}   -> scNullable wrapped
+  SCRef{}     -> scNullable wrapped
+  SCNull      -> False

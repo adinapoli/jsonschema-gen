@@ -16,7 +16,7 @@ module Data.JSON.Schema.Generator.Generic () where
 import Data.JSON.Schema.Generator.Class (JSONSchemaGen(..), JSONSchemaPrim(..)
     , GJSONSchemaGen(..), Options(..), FieldType(..))
 import Data.JSON.Schema.Generator.Types (Schema(..), SchemaChoice(..)
-    , scBoolean, scInteger, scNumber, scString)
+    , scBoolean, scInteger, scNumber, scString, setNullable)
 import Data.HashMap.Strict (HashMap)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -193,23 +193,9 @@ instance RecordToPairs U1 where
     recordToPairs _ _ _ _ = mempty
 
 instance (Selector s, IsNullable a, ToJSONSchemaDef a) => RecordToPairs (S1 s a) where
-    recordToPairs opts env notMaybe _ 
+    recordToPairs opts env notMaybe _
         | isEmpty   = mempty
-        | otherwise =
-            let wrapped  = toJSONSchemaDef opts env' field
-                wrapped' = case wrapped of
-                  SCSchema{}  -> wrapped
-                  SCString{}  -> wrapped { scNullable = isNullable field }
-                  SCInteger{} -> wrapped { scNullable = isNullable field }
-                  SCNumber{}  -> wrapped { scNullable = isNullable field }
-                  SCBoolean{} -> wrapped { scNullable = isNullable field }
-                  SCConst{}   -> wrapped
-                  SCObject{}  -> wrapped { scNullable = isNullable field }
-                  SCArray{}   -> wrapped { scNullable = isNullable field }
-                  SCOneOf{}   -> wrapped { scNullable = isNullable field }
-                  SCRef{}     -> wrapped { scNullable = isNullable field }
-                  SCNull -> wrapped
-            in pure ( Text.pack selname, wrapped' )
+        | otherwise = pure ( Text.pack selname, setNullable (isNullable field) (toJSONSchemaDef opts env' field) )
       where
         isEmpty = notMaybe && isNullable field
         field = Proxy :: Proxy (a p)
@@ -228,7 +214,7 @@ class ProductToList f where
     productToList :: Options -> Env -> Proxy (f a) -> [Schema]
 
 instance (IsNullable a, ToJSONSchemaDef a) => ProductToList (S1 s a) where
-    productToList opts env _ = pure (toJSONSchemaDef opts env prod) {scNullable = isNullable prod}
+    productToList opts env _ = pure $ setNullable (isNullable prod) (toJSONSchemaDef opts env prod)
       where
         prod = Proxy :: Proxy (a p)
 
@@ -246,11 +232,11 @@ class ToJSONSchemaDef f where
 instance {-# OVERLAPPING #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i (Maybe a)) where
     toJSONSchemaDef opts env _
       | Just s <- schemaType opts env
-      = s
+      = setNullable True s
       | Just (FieldType p) <- fieldType opts env
-      = toSchemaPrim opts p
+      = setNullable True (toSchemaPrim opts p)
       | otherwise
-      = toSchemaPrim opts (Proxy :: Proxy a)
+      = setNullable True (toSchemaPrim opts (Proxy :: Proxy a))
 
 instance {-# OVERLAPPABLE #-} (JSONSchemaPrim a) => ToJSONSchemaDef (K1 i a) where
     toJSONSchemaDef opts env _

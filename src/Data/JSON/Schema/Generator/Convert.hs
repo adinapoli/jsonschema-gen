@@ -1,6 +1,7 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 module Data.JSON.Schema.Generator.Convert
     ( convert
@@ -12,7 +13,7 @@ import Control.Applicative ((<*>))
 import Data.Monoid (mappend)
 #endif
 
-import Data.JSON.Schema.Generator.Types (Schema(..), SchemaChoice(..))
+import Data.JSON.Schema.Generator.Types (Schema(..), SchemaChoice(..), getNullable)
 import Data.Text (Text)
 
 import qualified Data.Aeson as A
@@ -93,24 +94,22 @@ jsReference SCRef {scReference = r} = [("$ref", string r)]
 jsReference _ = []
 
 jsType :: Bool -> A.Options -> Schema -> [(A.Key,A.Value)]
-jsType (needsNull -> f) (f -> True) SCString  {scNullable = True } = [("type", array ["string", "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCString  {scNullable = _    } = [("type", string "string")]
-jsType (needsNull -> f) (f -> True) SCInteger {scNullable = True } = [("type", array ["integer", "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCInteger {scNullable = _    } = [("type", string "integer")]
-jsType (needsNull -> f) (f -> True) SCNumber  {scNullable = True } = [("type", array ["number", "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCNumber  {scNullable = _    } = [("type", string "number")]
-jsType (needsNull -> f) (f -> True) SCBoolean {scNullable = True } = [("type", array ["boolean", "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCBoolean {scNullable = _    } = [("type", string "boolean")]
-jsType (needsNull -> f) (f -> True) SCObject  {scNullable = True } = [("type", array ["object", "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCObject  {scNullable = _    } = [("type", string "object")]
-jsType (needsNull -> f) (f -> True) SCArray   {scNullable = True } = [("type", array ["array",  "null" :: Text])]
-jsType (needsNull -> f) (f -> _   ) SCArray   {scNullable = _    } = [("type", string "array")]
-jsType (needsNull -> f) (f -> _   ) SCNull                         = [("type", string "null")]
-jsType _ _ _ = []
+jsType _ _ s
+  | Just (string -> ty) <- schemaToType s
+  = if getNullable s then [ ("type", array [ty, string "null"]) ] else [ ( "type", ty ) ]
+  | otherwise
+  = []
 
-needsNull :: Bool -> A.Options -> Bool
-needsNull True  _    = True
-needsNull False opts = not (A.omitNothingFields opts)
+schemaToType :: Schema -> Maybe T.Text
+schemaToType = \case
+  SCString{}  -> Just "string"
+  SCInteger{} -> Just "integer"
+  SCNumber{}  -> Just "number"
+  SCBoolean{} -> Just "boolean"
+  SCObject{}  -> Just "object"
+  SCArray{}   -> Just "array"
+  SCNull{}    -> Just "null"
+  _           -> Nothing
 
 jsFormat :: Schema -> [(A.Key,A.Value)]
 jsFormat SCString {scFormat = Just f} = [("format", string f)]
