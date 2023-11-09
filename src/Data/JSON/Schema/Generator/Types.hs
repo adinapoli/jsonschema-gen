@@ -10,6 +10,7 @@ module Data.JSON.Schema.Generator.Types
     ) where
 
 import Data.Text (Text)
+import qualified Data.Aeson as JSON
 
 --------------------------------------------------------------------------------
 
@@ -48,7 +49,7 @@ data Schema =
     | SCConst
         { scTitle        :: !Text
         , scDescription  :: !(Maybe Text)
-        , scValue        :: !Text
+        , scValue        :: !JSON.Value
         }
     | SCObject
         { scTitle        :: !Text

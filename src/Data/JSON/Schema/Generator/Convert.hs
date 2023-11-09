@@ -128,8 +128,19 @@ jsUpperBound SCArray  {scUpperBound = (Just n)} = [("maxItems",  number n)]
 jsUpperBound _ = []
 
 jsValue :: Schema -> [(A.Key,A.Value)]
-jsValue SCConst {scValue = v} = [("enum", array [v])]
+jsValue SCConst {scValue = v} = [("const", v)] ++ [tyFromValue v]
 jsValue _ = []
+
+tyFromValue :: A.Value -> (A.Key, A.Value)
+tyFromValue v =
+  let ty = case v of
+        A.String{} -> "string"
+        A.Array{}  -> "array"
+        A.Object{} -> "object"
+        A.Bool{}   -> "boolean"
+        A.Null     -> "null"
+        A.Number{} -> "number"
+  in ("type", ty)
 
 jsItems :: A.Options -> Schema -> [(A.Key,A.Value)]
 jsItems opts SCArray {scItems = itemsSchema} = [("items", convert' True opts $ itemsSchema)]

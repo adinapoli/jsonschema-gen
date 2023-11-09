@@ -32,6 +32,7 @@ import GHC.Generics (
     , C1, D1, K1, M1(unM1), S1, U1, (:+:), (:*:)
     , S)
 import Data.Kind
+import qualified Data.Aeson as JSON
 
 
 --------------------------------------------------------------------------------
@@ -72,7 +73,7 @@ instance (Constructor c) => SchemaType (C1 c U1) where
     simpleType _ env _ = SCConst
         { scTitle = Text.pack $ envModuleName env ++ "." ++ envDatatypeName env ++ "." ++ conname
         , scDescription = Nothing
-        , scValue = Text.pack conname
+        , scValue = JSON.String (Text.pack conname)
         }
       where
         conname = conName (undefined :: C1 c U1 p)
