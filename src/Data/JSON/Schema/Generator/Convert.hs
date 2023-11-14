@@ -117,7 +117,7 @@ jsFormat _ = []
 
 jsLowerBound :: Schema -> [(A.Key,A.Value)]
 jsLowerBound SCString {scLowerBound = (Just n)} = [("minLength", number n)]
-jsLowerBound SCNumber {scLowerBound = (Just n)} = [("mininum",   number n)]
+jsLowerBound SCNumber {scLowerBound = (Just n)} = [("minimum",   number n)]
 jsLowerBound SCArray  {scLowerBound = (Just n)} = [("minItems",  number n)]
 jsLowerBound _ = []
 
