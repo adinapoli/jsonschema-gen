@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Data.JSON.Schema.Generator.Convert
     ( convert
@@ -109,22 +110,33 @@ schemaToType = \case
   SCObject{}  -> Just "object"
   SCArray{}   -> Just "array"
   SCNull{}    -> Just "null"
-  _           -> Nothing
+  SCSchema{}  -> Nothing
+  SCConst{..} -> case scValue of
+    A.Object{} -> Just "object"
+    A.Array{}  -> Just "array"
+    A.Null{}   -> Just "null"
+    A.Bool{}   -> Just "boolean"
+    A.Number{} -> Just "number"
+    A.String{} -> Just "string"
+  SCOneOf{}    -> Nothing
+  SCRef{}      -> Nothing
 
 jsFormat :: Schema -> [(A.Key,A.Value)]
 jsFormat SCString {scFormat = Just f} = [("format", string f)]
 jsFormat _ = []
 
 jsLowerBound :: Schema -> [(A.Key,A.Value)]
-jsLowerBound SCString {scLowerBound = (Just n)} = [("minLength", number n)]
-jsLowerBound SCNumber {scLowerBound = (Just n)} = [("minimum",   number n)]
-jsLowerBound SCArray  {scLowerBound = (Just n)} = [("minItems",  number n)]
+jsLowerBound SCString  {scLowerBound = (Just n)} = [("minLength", number n)]
+jsLowerBound SCNumber  {scLowerBound = (Just n)} = [("minimum",   number n)]
+jsLowerBound SCInteger {scLowerBound = (Just n)} = [("minimum",   number n)]
+jsLowerBound SCArray   {scLowerBound = (Just n)} = [("minItems",  number n)]
 jsLowerBound _ = []
 
 jsUpperBound :: Schema -> [(A.Key,A.Value)]
-jsUpperBound SCString {scUpperBound = (Just n)} = [("maxLength", number n)]
-jsUpperBound SCNumber {scUpperBound = (Just n)} = [("maximum",   number n)]
-jsUpperBound SCArray  {scUpperBound = (Just n)} = [("maxItems",  number n)]
+jsUpperBound SCString  {scUpperBound = (Just n)} = [("maxLength", number n)]
+jsUpperBound SCNumber  {scUpperBound = (Just n)} = [("maximum",   number n)]
+jsUpperBound SCInteger {scUpperBound = (Just n)} = [("maximum",   number n)]
+jsUpperBound SCArray   {scUpperBound = (Just n)} = [("maxItems",  number n)]
 jsUpperBound _ = []
 
 jsValue :: Schema -> [(A.Key,A.Value)]
