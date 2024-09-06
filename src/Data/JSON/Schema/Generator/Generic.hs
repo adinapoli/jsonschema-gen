@@ -97,6 +97,7 @@ instance (RecordToPairs f) => SchemaTypeS f True where
         , scDescription = Nothing
         , scNullable = False
         , scProperties = recordToPairs opts env False (Proxy :: Proxy (f p))
+        , scAdditionalProperties = Left False
         , scPatternProps = []
         , scRequired = map fst . filter ((/=) SCNull . snd) $ recordToPairs opts env True (Proxy :: Proxy (f p))
         }
@@ -300,6 +301,7 @@ instance {-# OVERLAPS #-} (JSONSchemaPrim a) => JSONSchemaPrim (Map String a) wh
         , scDescription = Nothing
         , scNullable = False
         , scProperties = []
+        , scAdditionalProperties = Left False
         , scPatternProps = [(".*", toSchemaPrim opts (Proxy :: Proxy a))]
         , scRequired = []
         }
@@ -310,6 +312,7 @@ instance {-# OVERLAPS #-} (JSONSchemaPrim a) => JSONSchemaPrim (HashMap String a
         , scDescription = Nothing
         , scNullable = False
         , scProperties = []
+        , scAdditionalProperties = Left False
         , scPatternProps = [(".*", toSchemaPrim opts (Proxy :: Proxy a))]
         , scRequired = []
         }

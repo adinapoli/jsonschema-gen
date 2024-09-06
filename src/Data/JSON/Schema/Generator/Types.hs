@@ -56,6 +56,11 @@ data Schema =
         , scDescription  :: !(Maybe Text)
         , scNullable     :: !Bool
         , scProperties   :: ![(Text, Schema)]
+        -- | According to the 2020-12 draft:
+        -- The additionalProperties keyword is used to control the handling of extra stuff, that is,
+        -- properties whose names are not listed in the properties keyword or match any of the regular
+        -- expressions in the patternProperties keyword. By default any additional properties are allowed.
+        , scAdditionalProperties :: !(Either Bool Schema)
         , scPatternProps :: ![(Text, Schema)]
         , scRequired     :: ![Text]
         }

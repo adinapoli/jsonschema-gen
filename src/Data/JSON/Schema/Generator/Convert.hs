@@ -1,8 +1,9 @@
+{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE CPP               #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE ViewPatterns      #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Data.JSON.Schema.Generator.Convert
     ( convert
@@ -48,6 +49,7 @@ convertToList inArray opts s = foldr1 (++) $
     , jsValue
     , jsItems                opts
     , jsProperties           opts
+    , jsAdditionalProperties opts
     , jsPatternProps         opts
     , jsOneOf                opts
     , jsRequired             opts
@@ -161,6 +163,14 @@ jsItems _ _ = []
 jsProperties :: A.Options -> Schema -> [(A.Key,A.Value)]
 jsProperties opts SCObject {scProperties = p} = [("properties", object $ toMap opts p)]
 jsProperties _ _ = []
+
+jsAdditionalProperties :: A.Options -> Schema -> [(A.Key,A.Value)]
+jsAdditionalProperties opts SCObject {scAdditionalProperties = aProps} =
+  let !ps = case aProps of
+              Left b       -> A.toJSON b
+              Right schema -> convert opts schema
+  in [("additionalProperties", ps)]
+jsAdditionalProperties _ _ = []
 
 jsPatternProps :: A.Options -> Schema -> [(A.Key,A.Value)]
 jsPatternProps _    SCObject {scPatternProps = []} = []
